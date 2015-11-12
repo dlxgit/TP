@@ -19,17 +19,35 @@ enum State
 	UNABLE_TO_LOAD
 };
 
-struct
+struct Settings
 {
-	char name[150]; //fileName
-	char dir[150];  //directory as array of char
+	int index;
+	bool isButtonPressed;
+	Vector2f mouseDrag;
+	Vector2f mouseLastPos;
+	int zoom;
 	Texture texture;
 	Sprite sprite;
-	bool isLoaded;
-}FileStruct[200];
+	Vector2f windowSize;
+	Vector2f imageSize;
+	Vector2f scale;
+	char names[100][50];
+	int nFiles;
+	bool isChanged;
+	State state;
+};
 
+struct Buttons
+{
+	Texture textureButtons;
+	Texture textureZoom;
+	Sprite left;
+	Sprite right;
+	Sprite plus;
+	Sprite minus;
+};
 
-void GetFileDirectory(int &fileIndex, char dir[])
+void GetFilesDirectory(char dir[], Settings * settings, int n)
 {
 	int index;
 	char strDir[150] = { NULL };  //directory of file(folder) as array of char
@@ -38,14 +56,14 @@ void GetFileDirectory(int &fileIndex, char dir[])
 		strDir[i] = dir[i];
 		index = i;
 	}
-	for (int i = 0; FileStruct[fileIndex].name[i]; i++)
+	for (int i = 0; settings->names[n][i]; i++)
 	{
-		strDir[index + i] = FileStruct[fileIndex].name[i];
+		strDir[index + i] = settings->names[n][i];
 	}
-	strcpy(FileStruct[fileIndex].dir, strDir);
+	strcpy(settings->names[n], strDir);
 }
 
-void FindFiles(State & state, char(&dir)[150])
+void FindFiles(char(&dir)[150], Settings * settings)
 {
 	HANDLE handle;
 	WIN32_FIND_DATA findData;
@@ -54,7 +72,7 @@ void FindFiles(State & state, char(&dir)[150])
 
 	if (handle == INVALID_HANDLE_VALUE)
 	{
-		state = INVALID_DIR;
+		settings->state = INVALID_DIR;
 	}
 	else
 	{
@@ -63,9 +81,9 @@ void FindFiles(State & state, char(&dir)[150])
 		{
 			if (k == 0)
 			{
-				state = EMPTY_DIR;
+				settings->state = EMPTY_DIR;
 			}
-			else state = SHOW_IMAGE;
+			else settings->state = SHOW_IMAGE;
 			{
 				char str[300] = { NULL };
 				strcpy(str, findData.cFileName);
@@ -73,8 +91,15 @@ void FindFiles(State & state, char(&dir)[150])
 				string subStr = String0.substr(String0.find_last_of(".") + 1);  //file extension
 				if ((subStr == "png") || (subStr == "jpeg") || (subStr == "jpg") || (subStr == "bmp"))
 				{
-					strcpy(FileStruct[k].name, findData.cFileName);
-					cout << FileStruct[k].name << endl;
+					char name[50];
+					strcpy(name, findData.cFileName);
+
+					std::cout << name << endl;
+	
+					strcpy(settings->names[k], name);
+
+					settings->nFiles++;
+					GetFilesDirectory(dir, settings, k);
 					k++;
 				}
 			}
@@ -83,51 +108,35 @@ void FindFiles(State & state, char(&dir)[150])
 	FindClose(handle);
 }
 
-bool OpenImage(int &fileIndex, char dir[])
+bool OpenImage(Settings * settings)
 {
-	bool isImageLoaded = false;
+	Texture texture;
 
-	if (FileStruct[fileIndex].isLoaded == false)
+	if (texture.loadFromFile(settings->names[settings->index]))
 	{
-		Texture texture;
-
-		GetFileDirectory(fileIndex, dir);
-		if (texture.loadFromFile(FileStruct[fileIndex].dir))
-		{
-			isImageLoaded = true;
-
-			FileStruct[fileIndex].texture = texture;
-			FileStruct[fileIndex].isLoaded = true;
-		}
+		settings->texture = texture;
+		settings->sprite.setTexture(settings->texture);
+		return true;
 	}
-	else isImageLoaded = true;
-	return isImageLoaded;
+	else
+	{
+		//error loading text
+		return false;
+	}
 }
 
-int GetLastFileIndex()
+void ResetDefaultVariables(Settings * settings)
 {
-	int lastFileIndex;
-	lastFileIndex = 0;
-
-	while (FileStruct[lastFileIndex].name[0] != NULL)
-		lastFileIndex += 1;
-	lastFileIndex += 1;
-	return lastFileIndex;
+	settings->zoom = 1;
+	settings->mouseDrag.x = 0;
+	settings->mouseDrag.y = 0;
 }
 
-void ResetDefaultVariables(int & zoom, Vector2i & mouseDragDifference)
+bool ProcessEvents(RenderWindow & window,Settings * settings, Buttons * buttons)
 {
-	zoom = 1;
-	mouseDragDifference.x = 0;
-	mouseDragDifference.y = 0;
-}
+	Vector2f mousePosition = static_cast<sf::Vector2f>(sf::Mouse::getPosition(window));
 
-bool ProcessEvents(RenderWindow & window, int & fileIndex, Sprite & buttonLeft, Sprite & buttonRight, int & zoom, Vector2i & mouseLastInactivePos, Vector2i & mouseDragDifference, bool & isMousePressed)
-{
-	Vector2i mousePosition = Mouse::getPosition(window);
-
-	float windowSizeX = window.getSize().x;
-	float windowSizeY = window.getSize().y;
+	settings->windowSize = static_cast<sf::Vector2f>(window.getSize());
 
 	bool isEvent = false;
 
@@ -136,72 +145,84 @@ bool ProcessEvents(RenderWindow & window, int & fileIndex, Sprite & buttonLeft, 
 	{
 		if (window.hasFocus())
 		{
-			//if mouseLeft is pressed and it is on position of buttonLeft image
-			if (Keyboard::isKeyPressed(Keyboard::Left) || (buttonLeft.getGlobalBounds().contains(mousePosition.x * WIDTH_BASIC / windowSizeX, mousePosition.y * HEIGHT_BASIC / windowSizeY) && Mouse::isButtonPressed(Mouse::Left)))
+			//if mouseLeft is pressed and it is on position of buttons->left image
+			if (Keyboard::isKeyPressed(Keyboard::Left) || (buttons->left.getGlobalBounds().contains(mousePosition.x * WIDTH_BASIC / settings->windowSize.x, mousePosition.y * HEIGHT_BASIC / settings->windowSize.y) && Mouse::isButtonPressed(Mouse::Left)))
 			{
-				if (isMousePressed == false)
+				if (settings->isButtonPressed == false)
 				{
-					isMousePressed = true;
-
-					fileIndex -= 1;
-					if (fileIndex == -1)fileIndex = GetLastFileIndex();
-					window.setTitle(FileStruct[fileIndex].name);
-					ResetDefaultVariables(zoom, mouseDragDifference);
-					buttonLeft.setTextureRect(IntRect(121, 0, 121, 120));
-
+					settings->isButtonPressed = true;
+					settings->index -= 1;
+					if (settings->index <= -1)
+					{
+						settings->index = settings->nFiles - 1;
+					}
+					ResetDefaultVariables(settings);
+					buttons->left.setTextureRect(IntRect(121, 0, 121, 120));
+					window.setTitle(settings->names[settings->index]);
 					isEvent = true;
+
+					if (OpenImage(settings) == false)
+					{
+						settings->state = UNABLE_TO_LOAD;
+					}
 				}
 			}
-			//if mouseRight is pressed and it is on position of buttonRight image
-			else if (Keyboard::isKeyPressed(Keyboard::Right) || (buttonRight.getGlobalBounds().contains(mousePosition.x * WIDTH_BASIC / windowSizeX, mousePosition.y * HEIGHT_BASIC / windowSizeY) && Mouse::isButtonPressed(Mouse::Left)))
+			//if mouseRight is pressed and it is on position of buttons->right image
+			else if (Keyboard::isKeyPressed(Keyboard::Right) || (buttons->right.getGlobalBounds().contains(mousePosition.x * WIDTH_BASIC / settings->windowSize.x, mousePosition.y * HEIGHT_BASIC / settings->windowSize.y) && Mouse::isButtonPressed(Mouse::Left)))
 			{
-				if (isMousePressed == false)
+				if (settings->isButtonPressed == false)
 				{
-					isMousePressed = true;
-					fileIndex += 1;
-					if (fileIndex == GetLastFileIndex() + 1)fileIndex = 0;
-					window.setTitle(FileStruct[fileIndex].name);
-					ResetDefaultVariables(zoom, mouseDragDifference);
-
-					buttonRight.setTextureRect(IntRect(363, 0, 121, 120));
-
+					settings->isButtonPressed = true;
+					settings->index += 1;
+					if (settings->index <= settings->nFiles - 1)
+					{
+						settings->index = 0;
+					}
+					window.setTitle(settings->names[settings->index]);
+					ResetDefaultVariables(settings);
+					buttons->right.setTextureRect(IntRect(363, 0, 121, 120));
 					isEvent = true;
+					if (OpenImage(settings) == false)
+					{
+						settings->state = UNABLE_TO_LOAD;
+					}
 				}
 			}
-
 			else
 			{
-				buttonLeft.setTextureRect(IntRect(0, 0, 121, 120));
-				buttonRight.setTextureRect(IntRect(242, 0, 121, 120));
+				buttons->left.setTextureRect(IntRect(0, 0, 121, 120));
+				buttons->right.setTextureRect(IntRect(242, 0, 121, 120));
 
 				if (Mouse::isButtonPressed(Mouse::Left) == false)
 				{
-					isMousePressed = false;
-					mouseLastInactivePos = Mouse::getPosition(window) + mouseDragDifference;
+					settings->isButtonPressed = false;
+					settings->mouseLastPos = static_cast<sf::Vector2f>(Mouse::getPosition(window)) + settings->mouseDrag;
 				}
-				else isMousePressed = true;
+				else settings->isButtonPressed = true;
 
-				buttonLeft.setTextureRect(IntRect(0, 0, 121, 120));
-				buttonRight.setTextureRect(IntRect(242, 0, 121, 120));
 
-				isEvent = true;
-				if (isMousePressed == true)
+				buttons->left.setTextureRect(IntRect(0, 0, 121, 120));
+				buttons->right.setTextureRect(IntRect(242, 0, 121, 120));
+
+
+				if (settings->isButtonPressed == true)
 				{
-					mouseDragDifference.x = (mouseLastInactivePos.x - mousePosition.x);
-					mouseDragDifference.y = (mouseLastInactivePos.y - mousePosition.y);
+					settings->mouseDrag.x = (settings->mouseLastPos.x - mousePosition.x);
+					settings->mouseDrag.y = (settings->mouseLastPos.y - mousePosition.y);
+					isEvent = true;
 				}
 			}
 
 			if ((Keyboard::isKeyPressed(Keyboard::LControl) || Keyboard::isKeyPressed(Keyboard::RControl)) && Keyboard::isKeyPressed(Keyboard::Add))
 			{
-				zoom += 1;
-				if (zoom > 4) zoom = 4;
+				settings->zoom += 1;
+				if (settings->zoom > 4) settings->zoom = 4;
 				isEvent = true;
 			}
 			else if ((Keyboard::isKeyPressed(Keyboard::LControl) || Keyboard::isKeyPressed(Keyboard::RControl)) && Keyboard::isKeyPressed(Keyboard::Subtract))
 			{
-				zoom -= 1;
-				if (zoom < 1) zoom = 1;
+				settings->zoom -= 1;
+				if (settings->zoom < 1) settings->zoom = 1;
 				isEvent = true;
 			}
 
@@ -216,124 +237,117 @@ bool ProcessEvents(RenderWindow & window, int & fileIndex, Sprite & buttonLeft, 
 			}
 		}
 	}
+	if (settings->isChanged)
+	{
+		isEvent = true;
+		settings->isChanged = false;
+	}
+
 	return isEvent;
 }
 
-void computeImageSettings(RenderWindow & window, int & fileIndex, int & zoom, Sprite & buttonLeft, Sprite & buttonRight, Vector2i & mouseDragDifference)
+void ComputeImageSettings(RenderWindow & window, Settings * settings)
 {
 	Sprite image;
-	image.setTexture(FileStruct[fileIndex].texture);
+	image.setTexture(settings->texture);
+	window.setTitle(settings->names[settings->index]);
 
 	FloatRect imageRect = image.getGlobalBounds();
-	float imageSizeX;
-	float imageSizeY;
-	imageSizeX = imageRect.width;
-	imageSizeY = imageRect.height;
 
-	float windowSizeX;  //window size
-	float windowSizeY;  //window size
-	windowSizeX = window.getSize().x;
-	windowSizeY = window.getSize().y;
+	settings->imageSize.x = imageRect.width;
+	settings->imageSize.y = imageRect.height;
+
+	settings->windowSize = static_cast<sf::Vector2f>(window.getSize());
 
 	float ScaleX;
 	float ScaleY;
-	ScaleX = WIDTH_BASIC / windowSizeX;
-	ScaleY = HEIGHT_BASIC / windowSizeY;
+	ScaleX = WIDTH_BASIC / settings->windowSize.x;
+	ScaleY = HEIGHT_BASIC / settings->windowSize.y;
 
 	float Scale = 1;
 
 	//scaling
-	if (imageSizeX <= windowSizeX && imageSizeY <= windowSizeY) {}
+	if (settings->imageSize.x <= settings->windowSize.x && settings->imageSize.y <= settings->windowSize.y) {}
 
-	else if (windowSizeY < imageSizeY && windowSizeX >= imageSizeX)
+	else if (settings->windowSize.y < settings->imageSize.y && settings->windowSize.x >= settings->imageSize.x)
 	{
-		Scale = windowSizeY / imageSizeY;
+		Scale = settings->windowSize.y / settings->imageSize.y;
 	}
-	else if (windowSizeX < imageSizeX && windowSizeY >= imageSizeY)
+	else if (settings->windowSize.x < settings->imageSize.x && settings->windowSize.y >= settings->imageSize.y)
 	{
-		Scale = windowSizeX / imageSizeX;
+		Scale = settings->windowSize.x / settings->imageSize.x;
 	}
-	else if (windowSizeX < imageSizeX && windowSizeY < imageSizeY)
+	else if (settings->windowSize.x < settings->imageSize.x && settings->windowSize.y < settings->imageSize.y)
 	{
-		if (imageSizeX / imageSizeY >= windowSizeX / windowSizeY)
+		if (settings->imageSize.x / settings->imageSize.y >= settings->windowSize.x / settings->windowSize.y)
 		{
-			Scale = windowSizeX / imageSizeX;
+			Scale = settings->windowSize.x / settings->imageSize.x;
 		}
-		else if (imageSizeX / imageSizeY < windowSizeX / windowSizeY)
+		else if (settings->imageSize.x / settings->imageSize.y < settings->windowSize.x / settings->windowSize.y)
 		{
-			Scale = windowSizeY / imageSizeY;
+			Scale = settings->windowSize.y / settings->imageSize.y;
 		}
 	}
 
 	//if image is larger than window
-	if ((imageSizeX * ScaleX * Scale * zoom > WIDTH_BASIC) || (imageSizeY * ScaleY * Scale * zoom > HEIGHT_BASIC))
+	if ((settings->imageSize.x * ScaleX * Scale * settings->zoom > WIDTH_BASIC) || (settings->imageSize.y * ScaleY * Scale * settings->zoom > HEIGHT_BASIC))
 	{
-		image.setOrigin(int((mouseDragDifference.x) * abs(windowSizeX - imageSizeX) / (windowSizeX * zoom)), int(mouseDragDifference.y * abs(windowSizeY - imageSizeY) / (windowSizeY * zoom)));
+		image.setOrigin((settings->mouseDrag.x) * abs(settings->windowSize.x - settings->imageSize.x) / (settings->windowSize.x * settings->zoom), settings->mouseDrag.y * abs(settings->windowSize.y - settings->imageSize.y) / (settings->windowSize.y * settings->zoom));
 	}
 	else
 	{
 		image.setOrigin(0, 0);
 	}
 
-	image.setPosition(WIDTH_BASIC / 2 - (imageSizeX / 2) * ScaleX * Scale * zoom, HEIGHT_BASIC / 2 - (imageSizeY / 2) * ScaleY * Scale * zoom);
-	image.setScale(ScaleX * Scale * zoom, ScaleY * Scale * zoom);
+	image.setPosition(WIDTH_BASIC / 2 - (settings->imageSize.x / 2) * ScaleX * Scale * settings->zoom, HEIGHT_BASIC / 2 - (settings->imageSize.y / 2) * ScaleY * Scale * settings->zoom);
+	image.setScale(ScaleX * Scale * settings->zoom, ScaleY * Scale * settings->zoom);
 
-	window.setTitle(FileStruct[fileIndex].name);
-	FileStruct[fileIndex].sprite = image;
+	settings->scale = { ScaleX, ScaleY };
+	settings->sprite = image;
 }
 
-void computeButtonSettings(RenderWindow & window, int & zoom, Sprite & buttonLeft, Sprite & buttonRight, Sprite & buttonPlus, Sprite & buttonMinus)
+void ComputeButtonSettings(RenderWindow & window, Settings * settings, Buttons * buttons)
 {
-	float windowSizeX;
-	float windowSizeY;
-	windowSizeX = window.getSize().x;
-	windowSizeY = window.getSize().y;
-
-	float ScaleX;
-	float ScaleY;
-	ScaleX = WIDTH_BASIC / windowSizeX;
-	ScaleY = HEIGHT_BASIC / windowSizeY;
-
-	if (zoom > 1)
+	if (settings->zoom > 1)
 	{
-		buttonMinus.setTextureRect(IntRect(44, 83, 40, 40));
+		buttons->minus.setTextureRect(IntRect(44, 83, 40, 40));
 	}
 	else
 	{
-		buttonMinus.setTextureRect(IntRect(172, 83, 40, 40));
+		buttons->minus.setTextureRect(IntRect(172, 83, 40, 40));
 	}
-	if (zoom < 5)
+	if (settings->zoom < 5)
 	{
-		buttonPlus.setTextureRect(IntRect(44, 26, 40, 40));
+		buttons->plus.setTextureRect(IntRect(44, 26, 40, 40));
 	}
 	else
 	{
-		buttonPlus.setTextureRect(IntRect(172, 26, 40, 40));
+		buttons->plus.setTextureRect(IntRect(172, 26, 40, 40));
 	}
 
-	buttonPlus.setScale(ScaleX, ScaleY);
-	buttonMinus.setScale(ScaleX, ScaleY);
-	buttonLeft.setScale(0.5 * ScaleX, 0.5 * ScaleY);
-	buttonRight.setScale(0.5 * ScaleX, 0.5 * ScaleY);
+	buttons->plus.setScale(settings->scale);
+	buttons->minus.setScale(settings->scale);
+	buttons->left.setScale(float(0.5) * settings->scale.x, float(0.5) * settings->scale.y);
+	buttons->right.setScale(float(0.5) * settings->scale.x, float(0.5) * settings->scale.y);
 
 	//30 and 50 are numbers of distance between sprites and right bottom border of window
-	buttonPlus.setPosition((windowSizeX - 50) * WIDTH_BASIC / windowSizeX, (windowSizeY - 50) * HEIGHT_BASIC / windowSizeY);
-	buttonMinus.setPosition((windowSizeX - 100) * WIDTH_BASIC / windowSizeX, (windowSizeY - 50) * HEIGHT_BASIC / windowSizeY);
-	buttonLeft.setPosition(0, (windowSizeY / 2 - 30) * HEIGHT_BASIC / windowSizeY);
-	buttonRight.setPosition((windowSizeX - 60) * WIDTH_BASIC / windowSizeX, (windowSizeY / 2 - 30) * HEIGHT_BASIC / windowSizeY);
+	buttons->plus.setPosition((settings->windowSize.x - 50) * WIDTH_BASIC / settings->windowSize.x, (settings->windowSize.y - 50) * HEIGHT_BASIC / settings->windowSize.y);
+	buttons->minus.setPosition((settings->windowSize.x - 100) * WIDTH_BASIC / settings->windowSize.x, (settings->windowSize.y - 50) * HEIGHT_BASIC / settings->windowSize.y);
+	buttons->left.setPosition(0, (settings->windowSize.y / 2 - 30) * HEIGHT_BASIC / settings->windowSize.y);
+	buttons->right.setPosition((settings->windowSize.x - 60) * WIDTH_BASIC / settings->windowSize.x, (settings->windowSize.y / 2 - 30) * HEIGHT_BASIC / settings->windowSize.y);
 }
 
-void DrawImage(RenderWindow & window, int  fileIndex)
+void DrawImage(RenderWindow & window, Settings * settings)
 {
-	window.draw(FileStruct[fileIndex].sprite);
+	window.draw(settings->sprite);
 }
 
-void DrawButtons(RenderWindow & window, Sprite & buttonLeft, Sprite & buttonRight, Sprite & buttonPlus, Sprite & buttonMinus)
+void DrawButtons(RenderWindow & window, Buttons * buttons)
 {
-	window.draw(buttonLeft);
-	window.draw(buttonRight);
-	window.draw(buttonPlus);
-	window.draw(buttonMinus);
+	window.draw(buttons->left);
+	window.draw(buttons->right);
+	window.draw(buttons->plus);
+	window.draw(buttons->minus);
 }
 
 void CheckWindowClose(RenderWindow & window)
@@ -346,7 +360,6 @@ void CheckWindowClose(RenderWindow & window)
 	}
 }
 
-//functions of printing text
 void EmptyDirEvent(RenderWindow & window, Text & text)
 {
 	text.setString("There are no images in directory");
@@ -377,27 +390,31 @@ void LoadingText(RenderWindow & window, Text & text)
 
 void main()
 {
-	//images
-	Texture buttonsTexture;
-	buttonsTexture.loadFromFile("images/buttons.png");
-	Sprite buttonLeft;
-	Sprite buttonRight;
-	buttonLeft.setTexture(buttonsTexture);
-	buttonRight.setTexture(buttonsTexture);
-	buttonLeft.setTextureRect(IntRect(0, 0, 121, 120));
-	buttonRight.setTextureRect(IntRect(242, 0, 121, 120));
-	buttonLeft.setScale(0.5, 0.5);
-	buttonRight.setScale(0.5, 0.5);
-	buttonLeft.setPosition(30, 210);
-	buttonRight.setPosition(550, 210);
-	Texture zoomTexture;
-	zoomTexture.loadFromFile("images/zoom.png");
-	Sprite buttonPlus;
-	Sprite buttonMinus;
-	buttonPlus.setTexture(zoomTexture);
-	buttonMinus.setTexture(zoomTexture);
-	buttonPlus.setTextureRect(IntRect(43, 26, 40, 40));
-	buttonMinus.setTextureRect(IntRect(43, 103, 40, 40));
+	Settings * settings = new Settings();
+	Buttons * buttons = new Buttons();
+
+	settings->nFiles = 0;
+	settings->isChanged = false;
+	settings->zoom = 1;
+	settings->isButtonPressed = false;
+	settings->mouseLastPos = { 0,0 };
+	settings->mouseDrag = { 0,0 };
+	settings->scale = { 1, 1 };
+
+	buttons->textureButtons.loadFromFile("images/buttons.png");
+	buttons->left.setTexture(buttons->textureButtons);
+	buttons->right.setTexture(buttons->textureButtons);
+	buttons->left.setTextureRect(IntRect(0, 0, 121, 120));
+	buttons->right.setTextureRect(IntRect(242, 0, 121, 120));
+	buttons->left.setScale(0.5, 0.5);
+	buttons->right.setScale(0.5, 0.5);
+	buttons->left.setPosition(30, 210);
+	buttons->right.setPosition(550, 210);
+	buttons->textureZoom.loadFromFile("images/zoom.png");
+	buttons->plus.setTexture(buttons->textureZoom);
+	buttons->minus.setTexture(buttons->textureZoom);
+	buttons->plus.setTextureRect(IntRect(43, 26, 40, 40));
+	buttons->minus.setTextureRect(IntRect(43, 103, 40, 40));
 
 	//text
 	Font font;
@@ -405,73 +422,73 @@ void main()
 	Text text("", font, 30);
 	text.setColor(Color::Black);
 
-	State state;
-	int zoom = 1;
-	bool isMousePressed = false;
-	Vector2i mouseLastInactivePos;
-	Vector2i mouseDragDifference;
-	mouseDragDifference.x = 0;
-	mouseDragDifference.y = 0;
-
 	char dir[150];  //directory(path)
-	cout << "input directory (for example: d:/images/*) :";
-
+	cout << "input directory (for example: d:/images/*):  ";
+	
 	if (cin >> dir)
 	{
-		FindFiles(state, dir);
-
-		int fileIndex = 0;
+		FindFiles(dir, settings);	
+		settings->index = 0;
 		RenderWindow window(sf::VideoMode(WIDTH_BASIC, HEIGHT_BASIC), "ImageViewer");
 		window.setTitle("ImageViewer");
 
-		if (state != INVALID_DIR && state != EMPTY_DIR)
+		if (settings->state != INVALID_DIR && settings->state != EMPTY_DIR)
 		{
-			window.setTitle(FileStruct[fileIndex].name);
-			if (OpenImage(fileIndex, dir)) state = SHOW_IMAGE;
-			else state = UNABLE_TO_LOAD;
+			//window.setTitle(images->names[settings->index]);
+			if (OpenImage(settings))
+			{
+				settings->state = SHOW_IMAGE;
+			}
+			else
+			{
+				settings->state = UNABLE_TO_LOAD;
+			}
 		}
+		ComputeImageSettings(window, settings);
+		ComputeButtonSettings(window,settings, buttons);
 
-		computeImageSettings(window, fileIndex, zoom, buttonLeft, buttonRight, mouseDragDifference);
-		computeButtonSettings(window, zoom, buttonLeft, buttonRight, buttonPlus, buttonMinus);
+
 		//main cycle
 		while (window.isOpen())
 		{
 			window.clear(Color::White);
 
-			if (state == SHOW_IMAGE)
+			cout << settings->index << endl;
+			if (settings->state == SHOW_IMAGE)
 			{
 				//if any event detected(pressed button or resized)
-				if (ProcessEvents(window, fileIndex, buttonLeft, buttonRight, zoom, mouseLastInactivePos, mouseDragDifference, isMousePressed))
+				if (ProcessEvents(window, settings, buttons))
 				{
-					computeImageSettings(window, fileIndex, zoom, buttonLeft, buttonRight, mouseDragDifference);
-					computeButtonSettings(window, zoom, buttonLeft, buttonRight, buttonPlus, buttonMinus);
-					if (OpenImage(fileIndex, dir) == false)
-					{
-						state = UNABLE_TO_LOAD;
-					}
+					ComputeImageSettings(window, settings);
+					ComputeButtonSettings(window, settings, buttons);
 				}
-
-				DrawImage(window, fileIndex);
-				DrawButtons(window, buttonLeft, buttonRight, buttonPlus, buttonMinus);
+				DrawImage(window, settings);
+				DrawButtons(window, buttons);
 			}
-			else if (state == UNABLE_TO_LOAD)
+
+			else if (settings->state == UNABLE_TO_LOAD)
 			{
 				LoadingErrorEvent(window, text);
-				if (ProcessEvents(window, fileIndex, buttonLeft, buttonRight, zoom, mouseLastInactivePos, mouseDragDifference, isMousePressed))
+				if (ProcessEvents(window, settings, buttons))
 				{
-					computeImageSettings(window, fileIndex, zoom, buttonLeft, buttonRight, mouseDragDifference);
-					computeButtonSettings(window, zoom, buttonLeft, buttonRight, buttonPlus, buttonMinus);
-					if (OpenImage(fileIndex, dir))
-						state = SHOW_IMAGE;
+					settings->isChanged = true;
+					ComputeImageSettings(window, settings);
+					ComputeButtonSettings(window, settings, buttons);
+					if (OpenImage(settings))
+					{
+						settings->state = SHOW_IMAGE;
+					}
 				}
-				DrawButtons(window, buttonLeft, buttonRight, buttonPlus, buttonMinus);
+				DrawButtons(window, buttons);
 			}
-			else if (state == EMPTY_DIR)
+
+			else if (settings->state == EMPTY_DIR)
 			{
 				EmptyDirEvent(window, text);
 				CheckWindowClose(window);
 			}
-			else if (state == INVALID_DIR)
+
+			else if (settings->state == INVALID_DIR)
 			{
 				InvalidDirEvent(window, text);
 				CheckWindowClose(window);
