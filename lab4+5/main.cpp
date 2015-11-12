@@ -3,49 +3,11 @@
 #include <string>
 #include <iostream>
 #include "windows.h"
-#include <stdio.h>
+#include "main.h"
 
 using namespace std;
 using namespace sf;
 
-const int WIDTH_BASIC = 640;
-const int HEIGHT_BASIC = 480;
-
-enum State
-{
-	SHOW_IMAGE,
-	INVALID_DIR,
-	EMPTY_DIR,
-	UNABLE_TO_LOAD
-};
-
-struct Settings
-{
-	int index;
-	bool isButtonPressed;
-	Vector2f mouseDrag;
-	Vector2f mouseLastPos;
-	int zoom;
-	Texture texture;
-	Sprite sprite;
-	Vector2f windowSize;
-	Vector2f imageSize;
-	Vector2f scale;
-	char names[100][50];
-	int nFiles;
-	bool isChanged;
-	State state;
-};
-
-struct Buttons
-{
-	Texture textureButtons;
-	Texture textureZoom;
-	Sprite left;
-	Sprite right;
-	Sprite plus;
-	Sprite minus;
-};
 
 void GetFilesDirectory(char dir[], Settings * settings, int n)
 {
@@ -174,7 +136,7 @@ bool ProcessEvents(RenderWindow & window,Settings * settings, Buttons * buttons)
 				{
 					settings->isButtonPressed = true;
 					settings->index += 1;
-					if (settings->index <= settings->nFiles - 1)
+					if (settings->index >= settings->nFiles - 1)
 					{
 						settings->index = 0;
 					}
