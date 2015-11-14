@@ -3,7 +3,7 @@
 
 using namespace sf;
 
-const int TIME_STEP = 200;	// gameSpeed(milliSeconds)
+const static int TIME_STEP = 200;	// gameSpeed(milliSeconds)
 
 enum Direction
 {
@@ -32,21 +32,7 @@ struct Game
 	Sprite blockSprite;
 };
 
-void InitializeGame(Game * &game)
-{
-	//game = new Game();
-	game->state = BEGIN;
-	game->time = 0;
+void InitializeGame(Game * &game);
 
-	game->font.loadFromFile("resource/Font.ttf");
-	Text text("", game->font, 30);
-	text.setColor(Color::Red);
-	game->text = text;
+void DrawField(RenderWindow & window, Game * game);
 
-	game->texture.loadFromFile("resource/texture.png");
-	game->fieldSprite.setTexture(game->texture);
-	game->blockSprite.setTexture(game->texture);
-	game->fieldSprite.setTextureRect(IntRect(0, 0, 32, 32));
-	game->blockSprite.setTextureRect(IntRect(32, 0, 32, 32));
-	//time
-}

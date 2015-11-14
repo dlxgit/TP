@@ -50,17 +50,17 @@ void main()
 			while (game->time < TIME_STEP) 
 			{
 				ProcessEvents(window, snake);
-				game->time = clock.getElapsedTime().asMilliseconds(); //время в милисекундах
+				game->time = clock.getElapsedTime().asMilliseconds(); //get time in milliseconds
 			}
 
 			if (game->time >= TIME_STEP)
 			{
-				clock.restart();   //перезагружает время
+				clock.restart();   //reloading time
 
 				//update
-				ProcessEvents(window, snake);       //update direction
-				Tick(snake);						//update parts
-				Update(snake);                      //update position
+				ProcessEvents(window, snake);       // direction
+				Tick(snake);						// parts
+				Update(snake);                      // position
 
 				//check
 				CheckEventApple(snake, apple);      
