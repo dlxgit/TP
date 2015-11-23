@@ -1,5 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <string>
+#include <vector>
 
 using namespace sf;
 
@@ -26,7 +28,7 @@ struct Settings
 	Vector2f windowSize;
 	Vector2f imageSize;
 	Vector2f scale;
-	char names[100][50];
+	std::vector<std::string> names;
 	int nFiles;
 	bool isChanged;
 	State state;
