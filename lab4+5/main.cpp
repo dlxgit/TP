@@ -63,18 +63,13 @@ void FindFiles(string & dir, Settings & settings)
 bool OpenImage(Settings & settings)
 {
 	Texture texture;
-
 	if (texture.loadFromFile(settings.names[settings.index]))
 	{
 		settings.texture = texture;
 		settings.sprite.setTexture(settings.texture);
 		return true;
 	}
-	else
-	{
-		//error loading text
-		return false;
-	}
+	return false;
 }
 
 void ResetDefaultVariables(Settings & settings)
@@ -84,7 +79,7 @@ void ResetDefaultVariables(Settings & settings)
 	settings.mouseDrag.y = 0;
 }
 
-bool IsEvent(Vector2f & mousePosition, Settings & settings, RenderWindow & window, Buttons & buttons)
+bool CheckNewSettings(Vector2f & mousePosition, Settings & settings, RenderWindow & window, Buttons & buttons)
 {
 	bool isEvent = false;
 	Event event;
@@ -121,7 +116,6 @@ bool IsEvent(Vector2f & mousePosition, Settings & settings, RenderWindow & windo
 				settings.index = 0;
 			}
 			ResetDefaultVariables(settings);
-			buttons.right.setTextureRect(IntRect(363, 0, 121, 120));
 			isEvent = true;
 			if (OpenImage(settings) == false)
 			{
@@ -129,7 +123,6 @@ bool IsEvent(Vector2f & mousePosition, Settings & settings, RenderWindow & windo
 			}
 		}
 	}
-
 	if ((Keyboard::isKeyPressed(Keyboard::LControl) || Keyboard::isKeyPressed(Keyboard::RControl)) && Keyboard::isKeyPressed(Keyboard::Add))
 	{
 		settings.zoom += 1;
@@ -145,12 +138,28 @@ bool IsEvent(Vector2f & mousePosition, Settings & settings, RenderWindow & windo
 	return isEvent;
 }
 
+bool CheckDragAndDrop(Settings & settings, Vector2f & mousePosition, RenderWindow & window)
+{
+	if (Mouse::isButtonPressed(Mouse::Left) == false)
+	{
+		settings.isButtonPressed = false;
+		settings.mouseLastPos = static_cast<sf::Vector2f>(Mouse::getPosition(window)) + settings.mouseDrag;
+	}
+	else settings.isButtonPressed = true;
+
+	if (settings.isButtonPressed == true)
+	{
+		settings.mouseDrag.x = (settings.mouseLastPos.x - mousePosition.x);
+		settings.mouseDrag.y = (settings.mouseLastPos.y - mousePosition.y);
+		return true;
+	}
+	return false;
+}
+
 bool ProcessEvents(RenderWindow & window, Settings & settings, Buttons & buttons)
 {
 	Vector2f mousePosition = static_cast<sf::Vector2f>(sf::Mouse::getPosition(window));
-
 	settings.windowSize = static_cast<sf::Vector2f>(window.getSize());
-
 	bool isEvent = false;
 
 	Event event;
@@ -158,44 +167,24 @@ bool ProcessEvents(RenderWindow & window, Settings & settings, Buttons & buttons
 	{
 		if (window.hasFocus())
 		{
-			if (IsEvent(mousePosition, settings, window, buttons))
+			if (CheckNewSettings(mousePosition, settings, window, buttons))
 			{
 				isEvent = true;
 			}
 			else 
 			{
-				buttons.left.setTextureRect(IntRect(0, 0, 121, 120));
-				buttons.right.setTextureRect(IntRect(242, 0, 121, 120));
-
-				if (Mouse::isButtonPressed(Mouse::Left) == false)
+				if (CheckDragAndDrop(settings, mousePosition, window))
 				{
-					settings.isButtonPressed = false;
-					settings.mouseLastPos = static_cast<sf::Vector2f>(Mouse::getPosition(window)) + settings.mouseDrag;
-				}
-				else settings.isButtonPressed = true;
-
-				buttons.left.setTextureRect(IntRect(0, 0, 121, 120));
-				buttons.right.setTextureRect(IntRect(242, 0, 121, 120));
-
-				if (settings.isButtonPressed == true)
-				{
-					settings.mouseDrag.x = (settings.mouseLastPos.x - mousePosition.x);
-					settings.mouseDrag.y = (settings.mouseLastPos.y - mousePosition.y);
 					isEvent = true;
 				}
 			}
 		}
 	}
-	if (settings.isChanged)
+	if (settings.isChanged || event.type == Event::Resized)
 	{
 		isEvent = true;
 		settings.isChanged = false;
 	}
-	if (event.type == Event::Resized)
-	{
-		isEvent = true;
-	}
-
 	if (event.type == Event::Closed)
 	{
 		window.close();
@@ -212,25 +201,24 @@ void ComputeImageSettings(RenderWindow & window, Settings & settings)
 	settings.imageSize = { imageRect.width,imageRect.height };
 	settings.windowSize = static_cast<sf::Vector2f>(window.getSize());
 
-	float ScaleX;
-	float ScaleY;
-	ScaleX = WIDTH_BASIC / settings.windowSize.x;
-	ScaleY = HEIGHT_BASIC / settings.windowSize.y;
-	float Scale = 1;
+	Vector2f scaleW; //windowScale
+	scaleW = { WIDTH_BASIC / settings.windowSize.x, HEIGHT_BASIC / settings.windowSize.y };
+
+	float scaleMain = 1;  //proportional scale, equal for width and height (image scale, not window)
 
 	if (settings.windowSize.x < settings.imageSize.x && settings.windowSize.y < settings.imageSize.y)
 	{
 		if (settings.imageSize.x / settings.imageSize.y >= settings.windowSize.x / settings.windowSize.y)
 		{
-			Scale = settings.windowSize.x / settings.imageSize.x;
+			scaleMain = settings.windowSize.x / settings.imageSize.x;
 		}
 		else if (settings.imageSize.x / settings.imageSize.y < settings.windowSize.x / settings.windowSize.y)
 		{
-			Scale = settings.windowSize.y / settings.imageSize.y;
+			scaleMain = settings.windowSize.y / settings.imageSize.y;
 		}
 	}
 	//if image is larger than window
-	if ((settings.imageSize.x * ScaleX * Scale * settings.zoom > WIDTH_BASIC) || (settings.imageSize.y * ScaleY * Scale * settings.zoom > HEIGHT_BASIC))
+	if ((settings.imageSize.x * scaleW.x * scaleMain * settings.zoom > WIDTH_BASIC) || (settings.imageSize.y * scaleW.y * scaleMain * settings.zoom > HEIGHT_BASIC))
 	{
 		image.setOrigin((settings.mouseDrag.x) * abs(settings.windowSize.x - settings.imageSize.x) / (settings.windowSize.x * settings.zoom), settings.mouseDrag.y * abs(settings.windowSize.y - settings.imageSize.y) / (settings.windowSize.y * settings.zoom));
 	}
@@ -238,9 +226,9 @@ void ComputeImageSettings(RenderWindow & window, Settings & settings)
 	{
 		image.setOrigin(0, 0);
 	}
-	image.setPosition(WIDTH_BASIC / 2 - (settings.imageSize.x / 2) * ScaleX * Scale * settings.zoom, HEIGHT_BASIC / 2 - (settings.imageSize.y / 2) * ScaleY * Scale * settings.zoom);
-	image.setScale(ScaleX * Scale * settings.zoom, ScaleY * Scale * settings.zoom);
-	settings.scale = { ScaleX, ScaleY };
+	image.setPosition(WIDTH_BASIC / 2 - (settings.imageSize.x / 2) * scaleW.x * scaleMain * settings.zoom, HEIGHT_BASIC / 2 - (settings.imageSize.y / 2) * scaleW.y * scaleMain * settings.zoom);
+	image.setScale(scaleW.x * scaleMain * settings.zoom, scaleW.y * scaleMain * settings.zoom);
+	settings.scale = { scaleW.x, scaleW.y };
 	settings.sprite = image;
 }
 
@@ -327,78 +315,63 @@ void main()
 	buttons.right.setPosition(550, 210);
 	buttons.textureZoom.loadFromFile("images/zoom.png");
 
-	//text
 	Font font;
 	font.loadFromFile("Font/Arialbd.ttf");
 	Text text("", font, 30);
 	text.setColor(Color::Black);
 
 	string dir;  //directory(path)
+
 	cout << "input directory (for example: d:/images/*):  ";
+	settings.index = 0;
+	settings.state = SHOW_IMAGE;
 
 	if (cin >> dir)
 	{
 		FindFiles(dir, settings);	
-		settings.index = 0;
-		RenderWindow window(sf::VideoMode(WIDTH_BASIC, HEIGHT_BASIC), "ImageViewer");
-		window.setTitle("ImageViewer");
 
-		if (settings.state != INVALID_DIR && settings.state != EMPTY_DIR)
+		if (settings.state == SHOW_IMAGE && OpenImage(settings))
 		{
-			//window.setTitle(images->names[settings.index]);
-			if (OpenImage(settings))
-			{
-				settings.state = SHOW_IMAGE;
-			}
-			else
+			if (OpenImage(settings) == false)
 			{
 				settings.state = UNABLE_TO_LOAD;
 			}
 		}
+
+		RenderWindow window(sf::VideoMode(WIDTH_BASIC, HEIGHT_BASIC), "ImageViewer");
 		ComputeImageSettings(window, settings);
 		ComputeButtonSettings(window, settings, buttons);
-	
-		//main cycle
-		while (window.isOpen())
+
+		while (window.isOpen())  //main cycle
 		{
 			window.clear(Color::White);
 
-			cout << settings.index << endl;
-			if (settings.state == SHOW_IMAGE)
+			switch (settings.state)
 			{
-				//if any event detected(pressed button or resized)
-				if (ProcessEvents(window, settings, buttons))
+			case SHOW_IMAGE:
+				if (ProcessEvents(window, settings, buttons)) //if any event is detected(pressed button or resized)
 				{
 					ComputeImageSettings(window, settings);
 					ComputeButtonSettings(window, settings, buttons);
 				}
 				DrawImage(window, settings);
 				DrawButtons(window, buttons);
-			}
-			else if (settings.state == UNABLE_TO_LOAD)
-			{
+				break;
+			case UNABLE_TO_LOAD:
 				LoadingErrorEvent(window, text);
-				if (ProcessEvents(window, settings, buttons))
+				if (ProcessEvents(window, settings, buttons) && (OpenImage(settings)))
 				{
-					settings.isChanged = true;
-					ComputeImageSettings(window, settings);
-					ComputeButtonSettings(window, settings, buttons);
-					if (OpenImage(settings))
-					{
-						settings.state = SHOW_IMAGE;
-					}
+					settings.state = SHOW_IMAGE;
 				}
-				DrawButtons(window, buttons);
-			}
-			else if (settings.state == EMPTY_DIR)
-			{
+				break;
+			case EMPTY_DIR:
 				EmptyDirEvent(window, text);
 				CheckWindowClose(window);
-			}
-			else if (settings.state == INVALID_DIR)
-			{
+				break;
+			case INVALID_DIR:
 				InvalidDirEvent(window, text);
 				CheckWindowClose(window);
+				break;
 			}
 			window.display();
 		}		
