@@ -19,6 +19,18 @@ void GetFilesDirectory(string dir, Settings & settings, int n)
 	settings.names[n] = strDir + settings.names[n];
 }
 
+bool OpenImage(Settings & settings)
+{
+	Texture texture;
+	if (texture.loadFromFile(settings.names[settings.index]))
+	{
+		settings.texture = texture;
+		settings.sprite.setTexture(settings.texture);
+		return true;
+	}
+	return false;
+}
+
 void FindFiles(string & dir, Settings & settings)
 {
 	HANDLE handle;
@@ -58,19 +70,16 @@ void FindFiles(string & dir, Settings & settings)
 		} while (FindNextFile(handle, &findData) != 0);
 	}
 	FindClose(handle);
+
+	if (settings.state == SHOW_IMAGE && OpenImage(settings))
+	{
+		if (OpenImage(settings) == false)
+		{
+			settings.state = UNABLE_TO_LOAD;
+		}
+	}
 }
 
-bool OpenImage(Settings & settings)
-{
-	Texture texture;
-	if (texture.loadFromFile(settings.names[settings.index]))
-	{
-		settings.texture = texture;
-		settings.sprite.setTexture(settings.texture);
-		return true;
-	}
-	return false;
-}
 
 void ResetDefaultVariables(Settings & settings)
 {
@@ -284,6 +293,27 @@ void LoadingErrorEvent(RenderWindow & window, Text & text)
 	window.draw(text);
 }
 
+void NoImageEvent(RenderWindow & window, Text & text, Settings & settings, Buttons & buttons)
+{
+	CheckWindowClose(window);
+	if (settings.state == UNABLE_TO_LOAD)
+	{
+		LoadingErrorEvent(window, text);
+		if (ProcessEvents(window, settings, buttons) && (OpenImage(settings)))
+		{
+			settings.state = SHOW_IMAGE;
+		}
+	}
+	else if (settings.state == EMPTY_DIR)
+	{
+		EmptyDirEvent(window, text);
+	}
+	else if (settings.state == INVALID_DIR)
+	{
+		InvalidDirEvent(window, text);
+	}
+}
+
 void LoadingText(RenderWindow & window, Text & text)
 {
 	text.setString("Loading File...");
@@ -291,11 +321,9 @@ void LoadingText(RenderWindow & window, Text & text)
 	window.draw(text);
 }
 
-void main()
-{
-	Settings settings;
-	Buttons buttons;
 
+void InitializeProgram(Settings & settings, Buttons & buttons, Font & font, Text & text)
+{
 	settings.nFiles = 0;
 	settings.isChanged = false;
 	settings.zoom = 1;
@@ -303,6 +331,8 @@ void main()
 	settings.mouseLastPos = { 0,0 };
 	settings.mouseDrag = { 0,0 };
 	settings.scale = { 1, 1 };
+	settings.index = 0;
+	settings.state = SHOW_IMAGE;
 
 	buttons.textureButtons.loadFromFile("images/buttons.png");
 	buttons.left.setTexture(buttons.textureButtons);
@@ -315,28 +345,26 @@ void main()
 	buttons.right.setPosition(550, 210);
 	buttons.textureZoom.loadFromFile("images/zoom.png");
 
-	Font font;
 	font.loadFromFile("Font/Arialbd.ttf");
-	Text text("", font, 30);
+	text.setFont(font);
+	text.setCharacterSize(30);
 	text.setColor(Color::Black);
+}
+
+void main()
+{
+	Settings settings;
+	Buttons buttons;
+	Font font;
+	Text text;
+	InitializeProgram(settings, buttons, font, text);
 
 	string dir;  //directory(path)
-
 	cout << "input directory (for example: d:/images/*):  ";
-	settings.index = 0;
-	settings.state = SHOW_IMAGE;
 
 	if (cin >> dir)
 	{
 		FindFiles(dir, settings);	
-
-		if (settings.state == SHOW_IMAGE && OpenImage(settings))
-		{
-			if (OpenImage(settings) == false)
-			{
-				settings.state = UNABLE_TO_LOAD;
-			}
-		}
 
 		RenderWindow window(sf::VideoMode(WIDTH_BASIC, HEIGHT_BASIC), "ImageViewer");
 		ComputeImageSettings(window, settings);
@@ -345,10 +373,8 @@ void main()
 		while (window.isOpen())  //main cycle
 		{
 			window.clear(Color::White);
-
-			switch (settings.state)
+			if (settings.state == SHOW_IMAGE)
 			{
-			case SHOW_IMAGE:
 				if (ProcessEvents(window, settings, buttons)) //if any event is detected(pressed button or resized)
 				{
 					ComputeImageSettings(window, settings);
@@ -356,23 +382,11 @@ void main()
 				}
 				DrawImage(window, settings);
 				DrawButtons(window, buttons);
-				break;
-			case UNABLE_TO_LOAD:
-				LoadingErrorEvent(window, text);
-				if (ProcessEvents(window, settings, buttons) && (OpenImage(settings)))
-				{
-					settings.state = SHOW_IMAGE;
-				}
-				break;
-			case EMPTY_DIR:
-				EmptyDirEvent(window, text);
-				CheckWindowClose(window);
-				break;
-			case INVALID_DIR:
-				InvalidDirEvent(window, text);
-				CheckWindowClose(window);
-				break;
 			}
+			else
+			{
+				NoImageEvent(window, text, settings, buttons);
+			}		
 			window.display();
 		}		
 	}
