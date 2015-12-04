@@ -31,7 +31,7 @@ void InitializeClocks(Clocks & clocks)
 	clocks.circle.setPointCount(60);  //better circle quality
 
 	clocks.centerCircle.setRadius(10);
-	clocks.centerCircle.setPosition(Vector2f(190, 190));
+	clocks.centerCircle.setPosition(Vector2f(193, 193));
 	clocks.centerCircle.setFillColor(Color::Red);
 
 	InitializeMarkers(clocks.markers);

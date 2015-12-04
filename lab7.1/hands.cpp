@@ -8,18 +8,18 @@ void InitializeHands(Hands & hands)
 	hands.minute.line.setFillColor(Color::Green);
 	hands.second.line.setFillColor(Color::Red);
 
-	hands.hour.line.setPosition(Vector2f(center.x, center.y + 2));
-	hands.hour.line.setSize(Vector2f(40, 3));
+	hands.hour.line.setPosition(Vector2f(center.x + 2, center.y + 2));
+	hands.hour.line.setSize(Vector2f(73, 3));
 	hands.hour.maxTime = 12;
 	hands.hour.angle = 360 / hands.hour.maxTime;
 
-	hands.minute.line.setPosition(Vector2f(center.x, center.y + 2));
-	hands.minute.line.setSize(Vector2f(60, 3));
+	hands.minute.line.setPosition(Vector2f(center.x + 2, center.y + 2));
+	hands.minute.line.setSize(Vector2f(85, 3));
 	hands.minute.maxTime = 60;
 	hands.minute.angle = 360 / hands.minute.maxTime;
 
-	hands.second.line.setPosition(Vector2f(center.x, center.y + 2));
-	hands.second.line.setSize(Vector2f(85, 3));
+	hands.second.line.setPosition(Vector2f(center.x + 2, center.y + 2));
+	hands.second.line.setSize(Vector2f(105, 3));
 	hands.second.maxTime = 60;
 	hands.second.angle = 360 / hands.second.maxTime;
 };
