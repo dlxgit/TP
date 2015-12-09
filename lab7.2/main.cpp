@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cmath>
 #include "animation.h"
+#include "constants.h"
+
 
 using namespace sf;
 using namespace std;
@@ -28,7 +30,7 @@ void StartProgram(RenderWindow & window, vector<Block> & blocks, int & stateInde
 	{
 		timeSinceLastFrame = frameClock.getElapsedTime().asMilliseconds();
 		ProcessEvents(window);
-		if (timeSinceLastFrame >= 15)		//screen update every second
+		if (timeSinceLastFrame >= TIME_PER_FRAME)		//screen update every second
 		{
 			window.clear(Color::White);
 			frameClock.restart();
@@ -49,7 +51,7 @@ void main()
 
 	sf::ContextSettings settings;  //initialization of window
 	settings.antialiasingLevel = 8;
-	RenderWindow window(sf::VideoMode(640, 480), "lab 7.2", Style::Default, settings);
+	RenderWindow window(sf::VideoMode(WINDOW_SIZE.x,WINDOW_SIZE.y), "lab 7.2", Style::Default, settings);
 
 	StartProgram(window, blocks, stateIndex);
 }

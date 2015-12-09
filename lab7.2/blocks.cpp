@@ -7,7 +7,7 @@ void InitializeBlocks(vector<Block> & blocks)
 	for (int i = 0; i < N_BLOCKS; i++)
 	{
 		block.shape.setFillColor(Color::Green);
-		block.shape.setSize(Vector2f(float(40), float(20)));
+		block.shape.setSize(SHAPE_SIZE);
 		block.startPos = { float(60 * i + 30), float(10) };
 		block.shape.setPosition(block.startPos);
 		blocks.push_back(block);

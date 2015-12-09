@@ -5,7 +5,7 @@ void Animation5(vector<Block> & blocks, int & stateIndex)
 	for (int i = 0; i < N_BLOCKS; i++)
 	{
 		Vector2f pos = blocks[i].shape.getPosition();
-		pos.y -= 3;
+		pos.y -= STEP_DISTANCE.y;
 		blocks[i].shape.setPosition(pos);
 	}
 	if (blocks[0].shape.getPosition().y <= blocks[0].startPos.y)
@@ -21,8 +21,8 @@ void Animation4(vector<Block> & blocks, int & stateIndex)
 	for (int i = 0; i < N_BLOCKS; i++)
 	{
 		Vector2f pos = blocks[i].shape.getPosition();
-		pos.x += ((blocks[i].startPos.x - blocks[i].shape.getPosition().x) / ((yMax - blocks[0].shape.getPosition().y) / float(2)));
-		pos.y += ((yMax - blocks[i].shape.getPosition().y) / ((yMax - blocks[0].shape.getPosition().y) / float(2)));
+		pos.x += ((blocks[i].startPos.x - blocks[i].shape.getPosition().x) / ((yMax - blocks[0].shape.getPosition().y) / STEP_DISTANCE.x));
+		pos.y += ((yMax - blocks[i].shape.getPosition().y) / ((yMax - blocks[0].shape.getPosition().y) / STEP_DISTANCE.x));
 		blocks[i].shape.setPosition(pos);
 		if (blocks[0].shape.getPosition().y >= yMax)
 		{
@@ -38,19 +38,16 @@ void Animation3(vector<Block> & blocks, int & stateIndex)
 	for (int i = 0; i < N_BLOCKS; i++)
 	{
 		Vector2f pos = blocks[i].shape.getPosition();
-		pos.x -= float(2);
+		pos.x -= STEP_DISTANCE.x;
 		blocks[i].shape.setPosition(pos);
 
-		if (blocks[i].shape.getRotation() < 700)
+		if (!(blocks[i].shape.getPosition().x < 100 && blocks[i].shape.getRotation() == 0))
 		{
-			if (!(blocks[i].shape.getPosition().x < 100 && blocks[i].shape.getRotation() == 0))
-			{
-				blocks[i].shape.rotate(5);
-			}
-			if (blocks[i].shape.getScale().x > 1)
-			{
-				blocks[i].shape.setScale(blocks[i].shape.getScale().x - 0.005, blocks[i].shape.getScale().y - 0.001);
-			}
+			blocks[i].shape.rotate(ROTATION_FAST);
+		}
+		if (blocks[i].shape.getScale().x > 1)
+		{
+			blocks[i].shape.setScale(blocks[i].shape.getScale().x - SCALE_INCREASE.x, blocks[i].shape.getScale().y - SCALE_INCREASE.y);
 		}
 	}
 	if (blocks[0].shape.getPosition().x <= blocks[0].startPos.x)
@@ -66,18 +63,18 @@ void Animation2(vector<Block> & blocks, int & stateIndex)
 	{
 		Vector2f pos = blocks[i].shape.getPosition();
 
-		if (blocks[i].shape.getScale().x < 1.9)
+		if (blocks[i].shape.getScale().x < MAX_SCALE)
 		{
-			blocks[i].shape.setScale(blocks[i].shape.getScale().x + 0.005, blocks[i].shape.getScale().y + 0.001);
+			blocks[i].shape.setScale(blocks[i].shape.getScale().x + SCALE_INCREASE.x, blocks[i].shape.getScale().y + SCALE_INCREASE.y);
 		}
 		if (blocks[i].shape.getRotation() < 90)
 		{
-			blocks[i].shape.rotate(2);
+			blocks[i].shape.rotate(ROTATION_SLOW);
 		}
 
 		if (pos.x < RIGHT_X)
 		{
-			pos.x += ((float(RIGHT_X) - blocks[i].shape.getPosition().x) / ((float(RIGHT_X) - blocks[N_BLOCKS - 1].shape.getPosition().x) / float(2)));
+			pos.x += ((float(RIGHT_X) - blocks[i].shape.getPosition().x) / ((float(RIGHT_X) - blocks[N_BLOCKS - 1].shape.getPosition().x) / STEP_DISTANCE.x));
 			blocks[i].shape.setPosition(pos);
 		}
 	}
