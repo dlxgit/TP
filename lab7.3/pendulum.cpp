@@ -56,3 +56,11 @@ void ComputePhysics(Pendulum & pendulum)
 	pendulum.firstWheel.rotation += pendulum.speed / 2.f;
 	pendulum.secondWheel.rotation = -pendulum.firstWheel.rotation;
 };
+
+void Draw(RenderWindow & window, Pendulum & pendulum)
+{
+	window.draw(pendulum.weight);
+	window.draw(pendulum.turn);
+	window.draw(pendulum.firstWheel.sprite);
+	window.draw(pendulum.secondWheel.sprite);
+};

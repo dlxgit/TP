@@ -24,3 +24,5 @@ void InitializePendulum(Pendulum & pendulum);
 void UpdatePendulum(Pendulum & pendulum);
 
 void ComputePhysics(Pendulum & pendulum);
+
+void Draw(RenderWindow & window, Pendulum & pendulum);

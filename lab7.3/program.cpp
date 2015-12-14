@@ -1,4 +1,3 @@
-#pragma once
 #include "program.h"
 
 
@@ -14,13 +13,6 @@ void ProcessEvents(RenderWindow & window)
 	}
 };
 
-void Draw(RenderWindow & window, Pendulum & pendulum)
-{
-	window.draw(pendulum.weight);
-	window.draw(pendulum.turn);
-	window.draw(pendulum.firstWheel.sprite);
-	window.draw(pendulum.secondWheel.sprite);
-};
 
 void StartProgram(RenderWindow & window, Pendulum & pendulum)
 {
